@@ -1,0 +1,158 @@
+{% extends "base.html" %} {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-1">{{ todo_list.name }}</h3>
+    <p class="text-muted mb-0">
+      {{ todo_list.completed_items }} / {{ todo_list.total_items }} items
+      completed
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      id="edit-current-list-btn"
+      data-list-id="{{ todo_list.id }}"
+      data-list-name="{{ todo_list.name }}">
+      Rename List
+    </button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Back</a>
+  </div>
+</div>
+{% set total = todo_list.total_items %} 
+{% set completed = todo_list.completed_items %} 
+{% set progress_value = ((completed / total) * 100) if total > 0 else 0 %} 
+{% set progress_percent = progress_value|round|int %}
+<div
+  class="progress mb-4"
+  role="progressbar"
+  aria-valuenow="{{ progress_percent }}"
+  aria-valuemin="0"
+  aria-valuemax="100">
+  <div class="progress-bar" style="width: 0%" data-progress="{{ progress_percent }}">
+    {{ progress_percent }}%
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Add Checklist Item</h5>
+    <form
+      method="post"
+      action="{{ url_for('add_item', list_id=todo_list.id) }}">
+      <div class="input-group">
+        <input
+          class="form-control"
+          name="title"
+          placeholder="Enter New task"
+          required/>
+        <button class="btn btn-primary" type="submit">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title">Checklist</h5>
+    {% if todo_list.items %}
+    <ul class="list-group list-group-flush">
+      {% for item in todo_list.items %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <form
+          action="{{ url_for('toggle_item', item_id=item.id) }}"
+          method="post"
+          class="d-flex align-items-center gap-2 m-0">
+          <input
+            type="checkbox"
+            {% if item.completed %}checked{% endif %}
+            onchange="this.form.submit()"/>
+          <span class="{% if item.completed %}text-decoration-line-through text-muted{% endif %}">
+            {{ item.title }}
+          </span>
+        </form>
+        <div class="d-flex gap-2">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary edit-item-btn"
+            data-item-id="{{ item.id }}"
+            data-item-title="{{ item.title }}">
+            Rename
+          </button>
+          <form action="{{ url_for('delete_item', item_id=item.id) }}" method="post">
+            <button class="btn btn-sm btn-outline-danger" type="submit">
+              Remove
+            </button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted mb-0">No items yet.</p>
+    {% endif %}
+  </div>
+</div>
+<script>
+  document.querySelectorAll(".progress-bar[data-progress]").forEach((bar) => {
+    bar.style.width = `${bar.dataset.progress}%`;
+  });
+
+  const editCurrentListButton = document.getElementById("edit-current-list-btn");
+  if (editCurrentListButton) {
+    editCurrentListButton.addEventListener("click", async () => {
+      const currentName = editCurrentListButton.dataset.listName || "";
+      const nextName = prompt("Enter new list name", currentName);
+      if (nextName === null) return;
+
+      const name = nextName.trim();
+      if (!name) {
+        alert("List name cannot be empty.");
+        return;
+      }
+
+      const response = await fetch(`/api/lists/${editCurrentListButton.dataset.listId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        alert(payload.error || "Unable to rename list.");
+        return;
+      }
+
+      window.location.reload();
+    });
+  }
+
+  document.querySelectorAll(".edit-item-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const currentTitle = button.dataset.itemTitle || "";
+      const nextTitle = prompt("Edit item title", currentTitle);
+      if (nextTitle === null) return;
+
+      const title = nextTitle.trim();
+      if (!title) {
+        alert("Item title cannot be empty.");
+        return;
+      }
+
+      const response = await fetch(`/api/items/${button.dataset.itemId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        alert(payload.error || "Unable to update item.");
+        return;
+      }
+
+      window.location.reload();
+    });
+  });
+</script>
+{% endblock %}

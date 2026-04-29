@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Create New Todo List</h5>
+        <form method="post" action="{{ url_for('create_list') }}">
+          <div class="mb-3">
+            <label for="name" class="form-label">List Name</label>
+            <input
+              id="name"
+              name="name"
+              class="form-control"
+              placeholder="Enter Your List Name"
+              required/>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Create List</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Your Lists</h5>
+        {% if lists %}
+        <div class="list-group">
+          {% for todo_list in lists %}
+          {% set total = todo_list.total_items %}
+          {% set completed = todo_list.completed_items %}
+          {% set percent = (((completed / total) * 100) if total > 0 else 0)|round|int %}
+          <div class="list-group-item d-flex justify-content-between align-items-start py-3">
+            <div class="me-3 flex-grow-1">
+              <h6 class="mb-2">
+                {{ todo_list.name }}
+              </h6>
+              <div
+                class="progress mb-2"
+                role="progressbar"
+                aria-label="Task completion progress for {{ todo_list.name }}"
+                aria-valuenow="{{ percent }}"
+                aria-valuemin="0"
+                aria-valuemax="100">
+                <div class="progress-bar" style="width: 0%" data-progress="{{ percent }}">
+                  {{ percent }}%
+                </div>
+              </div>
+              <small class="text-muted">
+                {{ todo_list.completed_items }} of {{ todo_list.total_items }} items completed
+              </small>
+            </div>
+            <div class="d-flex gap-2 ms-3">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary edit-list-btn"
+                data-list-id="{{ todo_list.id }}"
+                data-list-name="{{ todo_list.name }}">
+                Rename
+              </button>
+              <a href="{{ url_for('view_list', list_id=todo_list.id) }}" class="btn btn-sm btn-outline-primary">Open</a>
+              <form method="post" action="{{ url_for('delete_list', list_id=todo_list.id) }}">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No lists yet. Create your first one.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll(".progress-bar[data-progress]").forEach((bar) => {
+    bar.style.width = `${bar.dataset.progress}%`;
+  });
+
+  document.querySelectorAll(".edit-list-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const currentName = button.dataset.listName || "";
+      const nextName = prompt("Enter new list name", currentName);
+      if (nextName === null) return;
+
+      const name = nextName.trim();
+      if (!name) {
+        alert("List name cannot be empty.");
+        return;
+      }
+
+      const response = await fetch(`/api/lists/${button.dataset.listId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        alert(payload.error || "Unable to rename list.");
+        return;
+      }
+
+      window.location.reload();
+    });
+  });
+</script>
+{% endblock %}

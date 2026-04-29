@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Register</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-light">
+    <div class="container py-5">
+      <div class="row justify-content-center">
+        <div class="col-md-5">
+          <div class="card shadow-sm">
+            <div class="card-body p-4">
+              <h4 class="mb-3">Create Account</h4>
+              {% if step == "confirm" %}
+              <p class="text-muted small mb-3">
+                Step 2 of 2: Enter the verification code we sent to your email.
+              </p>
+              {% else %}
+              <p class="text-muted small mb-3">
+                Step 1 of 2: Create your account.
+              </p>
+              {% endif %}
+
+              {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %} {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+              {% endfor %} {% endif %} {% endwith %}
+
+              {% if step == "confirm" %}
+              <form method="post">
+                <input type="hidden" name="stage" value="confirm" />
+                <div class="mb-3">
+                  <label class="form-label">Email</label>
+                  <input
+                    class="form-control"
+                    type="email"
+                    name="username"
+                    value="{{ default_email }}"
+                    required
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Verification Code</label>
+                  <input class="form-control" type="text" name="code" required />
+                </div>
+                <button class="btn btn-primary w-100" type="submit">
+                  Verify and finish
+                </button>
+              </form>
+              {% else %}
+              <form method="post">
+                <input type="hidden" name="stage" value="signup" />
+                <div class="mb-3">
+                  <label class="form-label">Email</label>
+                  <input
+                    class="form-control"
+                    type="email"
+                    name="email"
+                    value="{{ default_email }}"
+                    required
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Password</label>
+                  <input
+                    class="form-control"
+                    type="password"
+                    name="password"
+                    required
+                  />
+                </div>
+                <button class="btn btn-primary w-100" type="submit">
+                  Register
+                </button>
+              </form>
+              {% endif %}
+
+              <div class="mt-3 text-center">
+                <a href="{{ url_for('login') }}">Back to login</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
