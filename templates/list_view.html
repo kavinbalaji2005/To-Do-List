@@ -1,26 +1,29 @@
 {% extends "base.html" %} {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
-    <h3 class="mb-1">{{ todo_list.name }}</h3>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h3 class="mb-0">{{ todo_list.name }}</h3>
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        id="edit-current-list-btn"
+        data-list-id="{{ todo_list.id }}"
+        data-list-name="{{ todo_list.name }}">
+        Rename List
+      </button>
+    </div>
     <p class="text-muted mb-0">
       {{ todo_list.completed_items }} / {{ todo_list.total_items }} items
       completed
     </p>
   </div>
   <div class="d-flex gap-2">
-    <button
-      type="button"
-      class="btn btn-outline-secondary"
-      id="edit-current-list-btn"
-      data-list-id="{{ todo_list.id }}"
-      data-list-name="{{ todo_list.name }}">
-      Rename List
-    </button>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Back</a>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary"
+      >Back</a>
   </div>
 </div>
 {% set total = todo_list.total_items %} 
-{% set completed = todo_list.completed_items %} 
+{% set completed =todo_list.completed_items %} 
 {% set progress_value = ((completed / total) * 100) if total > 0 else 0 %} 
 {% set progress_percent = progress_value|round|int %}
 <div
@@ -29,7 +32,10 @@
   aria-valuenow="{{ progress_percent }}"
   aria-valuemin="0"
   aria-valuemax="100">
-  <div class="progress-bar" style="width: 0%" data-progress="{{ progress_percent }}">
+  <div
+    class="progress-bar"
+    style="width: 0%"
+    data-progress="{{ progress_percent }}">
     {{ progress_percent }}%
   </div>
 </div>
@@ -58,28 +64,39 @@
     {% if todo_list.items %}
     <ul class="list-group list-group-flush">
       {% for item in todo_list.items %}
-      <li class="list-group-item d-flex justify-content-between align-items-center">
+      <li
+        class="list-group-item d-flex justify-content-between align-items-center">
         <form
           action="{{ url_for('toggle_item', item_id=item.id) }}"
           method="post"
-          class="d-flex align-items-center gap-2 m-0">
+          class="d-flex align-items-center gap-2 m-0 flex-grow-1">
           <input
             type="checkbox"
-            {% if item.completed %}checked{% endif %}
+            {%
+            if
+            item.completed
+            %}checked{%
+            endif
+            %}
             onchange="this.form.submit()"/>
-          <span class="{% if item.completed %}text-decoration-line-through text-muted{% endif %}">
-            {{ item.title }}
-          </span>
+          <div class="d-flex align-items-center gap-2">
+            <span
+              class="{% if item.completed %}text-decoration-line-through text-muted{% endif %}">
+              {{ item.title }}
+            </span>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary edit-item-btn"
+              data-item-id="{{ item.id }}"
+              data-item-title="{{ item.title }}">
+              Rename
+            </button>
+          </div>
         </form>
         <div class="d-flex gap-2">
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary edit-item-btn"
-            data-item-id="{{ item.id }}"
-            data-item-title="{{ item.title }}">
-            Rename
-          </button>
-          <form action="{{ url_for('delete_item', item_id=item.id) }}" method="post">
+          <form
+            action="{{ url_for('delete_item', item_id=item.id) }}"
+            method="post">
             <button class="btn btn-sm btn-outline-danger" type="submit">
               Remove
             </button>
@@ -98,7 +115,9 @@
     bar.style.width = `${bar.dataset.progress}%`;
   });
 
-  const editCurrentListButton = document.getElementById("edit-current-list-btn");
+  const editCurrentListButton = document.getElementById(
+    "edit-current-list-btn",
+  );
   if (editCurrentListButton) {
     editCurrentListButton.addEventListener("click", async () => {
       const currentName = editCurrentListButton.dataset.listName || "";
@@ -111,11 +130,14 @@
         return;
       }
 
-      const response = await fetch(`/api/lists/${editCurrentListButton.dataset.listId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
+      const response = await fetch(
+        `/api/lists/${editCurrentListButton.dataset.listId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        },
+      );
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));

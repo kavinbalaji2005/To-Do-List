@@ -12,7 +12,7 @@ from flask_sqlalchemy import SQLAlchemy
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///todo.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -20,16 +20,13 @@ db = SQLAlchemy(app)
 
 class User(db.Model):
     __tablename__ = "users"
-
     id = db.Column(db.Integer, primary_key=True)
     cognito_sub = db.Column(db.String(128), unique=True, nullable=False, index=True)
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     lists = db.relationship("TodoList", backref="owner", cascade="all, delete-orphan", lazy=True)
 
-
 class TodoList(db.Model):
     __tablename__ = "todo_lists"
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
@@ -40,11 +37,9 @@ class TodoList(db.Model):
         lazy=True,
         order_by="ChecklistItem.id.asc()",
     )
-
     @property
     def total_items(self):
         return len(self.items)
-
     @property
     def completed_items(self):
         return sum(1 for item in self.items if item.completed)
@@ -63,7 +58,6 @@ class TodoList(db.Model):
 
 class ChecklistItem(db.Model):
     __tablename__ = "checklist_items"
-
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     completed = db.Column(db.Boolean, nullable=False, default=False)
@@ -490,5 +484,5 @@ with app.app_context():
     db.create_all()
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "5001"))
+    port = int(os.getenv("PORT"))
     app.run(debug=True, host="127.0.0.1", port=port)
