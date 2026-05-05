@@ -50,6 +50,7 @@ class TodoList(db.Model):
         }
         if include_items:
             payload["items"] = [item.to_dict() for item in self.items]
+
         return payload
 
 class ChecklistItem(db.Model):
@@ -80,7 +81,7 @@ def cognito_settings():
 def cognito_client(region):
     return boto3.client("cognito-idp", region_name=region)
 
-def secret_hash(username, client_id, client_secret):
+def get_secret_hash(username, client_id, client_secret):
     if not client_secret:
         return None
     digest = hmac.new(
@@ -202,9 +203,9 @@ def register():
                     "Password": password,
                     "UserAttributes": [{"Name": "email", "Value": email}],
                 }
-                secret_hash = secret_hash(email, client_id, client_secret)
-                if secret_hash:
-                    payload["SecretHash"] = secret_hash
+                secret_hash_value = get_secret_hash(email, client_id, client_secret)
+                if secret_hash_value:
+                    payload["SecretHash"] = secret_hash_value
 
                 client.sign_up(**payload)
                 session["pending_username"] = email
@@ -233,9 +234,9 @@ def register():
                     "Username": username,
                     "ConfirmationCode": code,
                 }
-                secret_hash = secret_hash(username, client_id, client_secret)
-                if secret_hash:
-                    payload["SecretHash"] = secret_hash
+                secret_hash_value = get_secret_hash(username, client_id, client_secret)
+                if secret_hash_value:
+                    payload["SecretHash"] = secret_hash_value
 
                 client.confirm_sign_up(**payload)
                 session.pop("pending_username", None)
@@ -268,9 +269,9 @@ def login():
             region, client_id, client_secret = cognito_settings()
             client = cognito_client(region)
             auth_params = {"USERNAME": email, "PASSWORD": password}
-            secret_hash = secret_hash(email, client_id, client_secret)
-            if secret_hash:
-                auth_params["SECRET_HASH"] = secret_hash
+            secret_hash_value = get_secret_hash(email, client_id, client_secret)
+            if secret_hash_value:
+                auth_params["SECRET_HASH"] = secret_hash_value
 
             auth_response = client.initiate_auth(
                 AuthFlow="USER_PASSWORD_AUTH",
