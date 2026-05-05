@@ -84,6 +84,7 @@
               class="{% if item.completed %}text-decoration-line-through text-muted{% endif %}">
               {{ item.title }}
             </span>
+            {% if not item.completed %}
             <button
               type="button"
               class="btn btn-sm btn-outline-secondary edit-item-btn"
@@ -91,6 +92,7 @@
               data-item-title="{{ item.title }}">
               Rename
             </button>
+            {% endif %}
           </div>
         </form>
         <div class="d-flex gap-2">
