@@ -67,7 +67,7 @@ class ChecklistItem(db.Model):
             "list_id": self.list_id,
         }
 
-def _cognito_settings():
+def cognito_settings():
     region = os.getenv("AWS_REGION", "").strip()
     client_id = os.getenv("COGNITO_APP_CLIENT_ID", "").strip()
     client_secret = os.getenv("COGNITO_APP_CLIENT_SECRET", "").strip()
@@ -77,10 +77,10 @@ def _cognito_settings():
         )
     return region, client_id, client_secret
 
-def _cognito_client(region):
+def cognito_client(region):
     return boto3.client("cognito-idp", region_name=region)
 
-def _secret_hash(username, client_id, client_secret):
+def secret_hash(username, client_id, client_secret):
     if not client_secret:
         return None
     digest = hmac.new(
@@ -90,7 +90,7 @@ def _secret_hash(username, client_id, client_secret):
     ).digest()
     return base64.b64encode(digest).decode("utf-8")
 
-def _cognito_error_message(error):
+def cognito_error_message(error):
     return error.response.get("Error", {}).get("Message", "Unexpected Cognito error.")
 
 def current_user():
@@ -110,14 +110,14 @@ def login_required(view_func):
 def api_login_required(view_func):
     @wraps(view_func)
     def wrapped(*args, **kwargs):
-        user = _api_current_user()
+        user = api_current_user()
         if user is None:
             return jsonify({"error": "Authentication required"}), 401
         g.api_user = user
         return view_func(*args, **kwargs)
     return wrapped
 
-def _api_current_user():
+def api_current_user():
     user = current_user()
     if user is not None:
         return user
@@ -128,8 +128,8 @@ def _api_current_user():
     if not access_token:
         return None
     try:
-        region, _, _ = _cognito_settings()
-        client = _cognito_client(region)
+        region, _, _ = cognito_settings()
+        client = cognito_client(region)
         cognito_user = client.get_user(AccessToken=access_token)
     except (RuntimeError, ClientError):
         return None
@@ -147,13 +147,13 @@ def _api_current_user():
     db.session.commit()
     return user
 
-def _get_user_list_or_404(user_id, list_id):
+def get_user_list_or_404(user_id, list_id):
     todo_list = TodoList.query.filter_by(id=list_id, user_id=user_id).first()
     if todo_list is None:
         abort(404)
     return todo_list
 
-def _get_user_item_or_404(user_id, item_id):
+def get_user_item_or_404(user_id, item_id):
     item = (
         ChecklistItem.query.join(TodoList, ChecklistItem.list_id == TodoList.id)
         .filter(ChecklistItem.id == item_id, TodoList.user_id == user_id)
@@ -193,8 +193,8 @@ def register():
                 return render_template("register.html", step="signup", default_email=email)
 
             try:
-                region, client_id, client_secret = _cognito_settings()
-                client = _cognito_client(region)
+                region, client_id, client_secret = cognito_settings()
+                client = cognito_client(region)
 
                 payload = {
                     "ClientId": client_id,
@@ -202,7 +202,7 @@ def register():
                     "Password": password,
                     "UserAttributes": [{"Name": "email", "Value": email}],
                 }
-                secret_hash = _secret_hash(email, client_id, client_secret)
+                secret_hash = secret_hash(email, client_id, client_secret)
                 if secret_hash:
                     payload["SecretHash"] = secret_hash
 
@@ -213,7 +213,7 @@ def register():
             except RuntimeError as error:
                 flash(str(error), "danger")
             except ClientError as error:
-                flash(_cognito_error_message(error), "danger")
+                flash(cognito_error_message(error), "danger")
             return render_template("register.html", step="signup", default_email=email)
 
         if stage == "confirm":
@@ -225,15 +225,15 @@ def register():
                 return render_template("register.html", step="confirm", default_email=username or default_email)
 
             try:
-                region, client_id, client_secret = _cognito_settings()
-                client = _cognito_client(region)
+                region, client_id, client_secret = cognito_settings()
+                client = cognito_client(region)
 
                 payload = {
                     "ClientId": client_id,
                     "Username": username,
                     "ConfirmationCode": code,
                 }
-                secret_hash = _secret_hash(username, client_id, client_secret)
+                secret_hash = secret_hash(username, client_id, client_secret)
                 if secret_hash:
                     payload["SecretHash"] = secret_hash
 
@@ -244,7 +244,7 @@ def register():
             except RuntimeError as error:
                 flash(str(error), "danger")
             except ClientError as error:
-                flash(_cognito_error_message(error), "danger")
+                flash(cognito_error_message(error), "danger")
             return render_template("register.html", step="confirm", default_email=username or default_email)
 
         flash("Invalid registration action.", "danger")
@@ -265,10 +265,10 @@ def login():
             return render_template("login.html")
 
         try:
-            region, client_id, client_secret = _cognito_settings()
-            client = _cognito_client(region)
+            region, client_id, client_secret = cognito_settings()
+            client = cognito_client(region)
             auth_params = {"USERNAME": email, "PASSWORD": password}
-            secret_hash = _secret_hash(email, client_id, client_secret)
+            secret_hash = secret_hash(email, client_id, client_secret)
             if secret_hash:
                 auth_params["SECRET_HASH"] = secret_hash
 
@@ -297,7 +297,7 @@ def login():
         except RuntimeError as error:
             flash(str(error), "danger")
         except ClientError as error:
-            flash(_cognito_error_message(error), "danger")
+            flash(cognito_error_message(error), "danger")
 
     return render_template("login.html")
 
@@ -331,7 +331,7 @@ def create_list():
 @login_required
 def delete_list(list_id):
     user = current_user()
-    todo_list = _get_user_list_or_404(user.id, list_id)
+    todo_list = get_user_list_or_404(user.id, list_id)
     db.session.delete(todo_list)
     db.session.commit()
     return redirect(url_for("dashboard"))
@@ -340,14 +340,14 @@ def delete_list(list_id):
 @login_required
 def view_list(list_id):
     user = current_user()
-    todo_list = _get_user_list_or_404(user.id, list_id)
+    todo_list = get_user_list_or_404(user.id, list_id)
     return render_template("list_view.html", todo_list=todo_list)
 
 @app.post("/lists/<int:list_id>/items")
 @login_required
 def add_item(list_id):
     user = current_user()
-    todo_list = _get_user_list_or_404(user.id, list_id)
+    todo_list = get_user_list_or_404(user.id, list_id)
     title = request.form.get("title", "").strip()
     if not title:
         flash("Item title is required.", "danger")
@@ -362,7 +362,7 @@ def add_item(list_id):
 @login_required
 def toggle_item(item_id):
     user = current_user()
-    item = _get_user_item_or_404(user.id, item_id)
+    item = get_user_item_or_404(user.id, item_id)
     item.completed = not item.completed
     db.session.commit()
     return redirect(url_for("view_list", list_id=item.list_id))
@@ -371,7 +371,7 @@ def toggle_item(item_id):
 @login_required
 def delete_item(item_id):
     user = current_user()
-    item = _get_user_item_or_404(user.id, item_id)
+    item = get_user_item_or_404(user.id, item_id)
     list_id = item.list_id
     db.session.delete(item)
     db.session.commit()
@@ -402,14 +402,14 @@ def api_create_list():
 @api_login_required
 def api_get_list(list_id):
     user = g.api_user
-    todo_list = _get_user_list_or_404(user.id, list_id)
+    todo_list = get_user_list_or_404(user.id, list_id)
     return jsonify(todo_list.to_dict(include_items=True))
 
 @app.put("/api/lists/<int:list_id>")
 @api_login_required
 def api_update_list(list_id):
     user = g.api_user
-    todo_list = _get_user_list_or_404(user.id, list_id)
+    todo_list = get_user_list_or_404(user.id, list_id)
     data = request.get_json(silent=True) or {}
     name = str(data.get("name", "")).strip()
     if not name:
@@ -423,7 +423,7 @@ def api_update_list(list_id):
 @api_login_required
 def api_delete_list(list_id):
     user = g.api_user
-    todo_list = _get_user_list_or_404(user.id, list_id)
+    todo_list = get_user_list_or_404(user.id, list_id)
     db.session.delete(todo_list)
     db.session.commit()
     return jsonify({"message": "List deleted successfully."})
@@ -432,7 +432,7 @@ def api_delete_list(list_id):
 @api_login_required
 def api_create_item(list_id):
     user = g.api_user
-    todo_list = _get_user_list_or_404(user.id, list_id)
+    todo_list = get_user_list_or_404(user.id, list_id)
     data = request.get_json(silent=True) or {}
     title = str(data.get("title", "")).strip()
     if not title:
@@ -449,7 +449,7 @@ def api_create_item(list_id):
 @api_login_required
 def api_update_item(item_id):
     user = g.api_user
-    item = _get_user_item_or_404(user.id, item_id)
+    item = get_user_item_or_404(user.id, item_id)
     data = request.get_json(silent=True) or {}
 
     if "title" in data:
@@ -469,7 +469,7 @@ def api_update_item(item_id):
 @api_login_required
 def api_delete_item(item_id):
     user = g.api_user
-    item = _get_user_item_or_404(user.id, item_id)
+    item = get_user_item_or_404(user.id, item_id)
     todo_list = db.session.get(TodoList, item.list_id)
     db.session.delete(item)
     db.session.commit()
