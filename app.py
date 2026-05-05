@@ -31,11 +31,7 @@ class TodoList(db.Model):
     name = db.Column(db.String(120), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     items = db.relationship(
-        "ChecklistItem",
-        backref="todo_list",
-        cascade="all, delete-orphan",
-        lazy=True,
-        order_by="ChecklistItem.id.asc()",
+        "ChecklistItem", backref="todo_list", cascade="all, delete-orphan", lazy=True, order_by="ChecklistItem.id.asc()",
     )
     @property
     def total_items(self):
